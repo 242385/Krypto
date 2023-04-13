@@ -1,12 +1,9 @@
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using AnotherFileBrowser.Windows;
 using System.IO;
-using System.Linq;
 using System.Text;
-using Unity.VisualScripting;
-using Unity.VisualScripting.Dependencies.NCalc;
+using TMPro;
 using UnityEngine;
 
 public class TripleDES : MonoBehaviour
@@ -16,7 +13,15 @@ public class TripleDES : MonoBehaviour
     private byte[] _output;
     byte[] _leftHalf = new byte[4];
     byte[] _rightHalf = new byte[4];
-    public string _exampleKey = "P1w3rk0!";
+    string exampleKey1 = "P1w3rk0!";
+    string exampleKey2 = "R0mP3r3k";
+    string exampleKey3 = "H4rN0lD!";
+    
+    public TMP_Text path;
+    public TMP_InputField key1Field;   
+    public TMP_InputField key2Field;   
+    public TMP_InputField key3Field;
+    
     BitArray _bitKey;
     BitArray _LPT;
     BitArray _RPT;
@@ -80,8 +85,9 @@ public class TripleDES : MonoBehaviour
         24, 25, 26, 27, 28, 29,
         28, 29, 30, 31, 32, 1
     };
-    
-    int[] _pPermutation = {
+
+    int[] _pPermutation =
+    {
         16, 7, 20, 21,
         29, 12, 28, 17,
         1, 15, 23, 26,
@@ -160,13 +166,85 @@ public class TripleDES : MonoBehaviour
 
     public void Encrypt()
     {
+        if (key1Field.text.Length == 0)
+            key1Field.text = exampleKey1;
+        
+        if (key2Field.text.Length == 0)
+            key2Field.text = exampleKey2;
+        
+        if (key3Field.text.Length == 0)
+            key3Field.text = exampleKey3;
+
+        key1Field.text = key1Field.text.PadRight(8, '0');
+        key2Field.text = key2Field.text.PadRight(8, '0');
+        key3Field.text = key3Field.text.PadRight(8, '0');
+
+        exampleKey1 = key1Field.text;
+        exampleKey2 = key2Field.text;
+        exampleKey3 = key3Field.text;
+        
+        Debug.Log(exampleKey1);
+        
+        // 3DES
+        for (int i = 0; i < _blockArray.Length; i++)
+        {
+            _blockArray[i] = SingleBlockEncrypting(_blockArray[i], exampleKey1, false);
+        }
+
+        for (int i = 0; i < _blockArray.Length; i++)
+        {
+            _blockArray[i] = SingleBlockEncrypting(_blockArray[i], exampleKey2, true);
+        }
+
+        for (int i = 0; i < _blockArray.Length; i++)
+        {
+            _blockArray[i] = SingleBlockEncrypting(_blockArray[i], exampleKey3, false);
+        }
+
+        _fileBytes = ConcatenateByteArrays(_blockArray);
     }
 
     public void Decrypt()
     {
+        if (key1Field.text.Length == 0)
+            key1Field.text = exampleKey1;
+        
+        if (key2Field.text.Length == 0)
+            key2Field.text = exampleKey2;
+        
+        if (key3Field.text.Length == 0)
+            key3Field.text = exampleKey3;
+
+        key1Field.text = key1Field.text.PadRight(8, '0');
+        key2Field.text = key2Field.text.PadRight(8, '0');
+        key3Field.text = key3Field.text.PadRight(8, '0');
+
+        exampleKey1 = key1Field.text;
+        exampleKey2 = key2Field.text;
+        exampleKey3 = key3Field.text;
+        
+        Debug.Log(exampleKey1);
+        
+        // 3DES
+        for (int i = 0; i < _blockArray.Length; i++)
+        {
+            _blockArray[i] = SingleBlockEncrypting(_blockArray[i], exampleKey3, true);
+        }
+
+        for (int i = 0; i < _blockArray.Length; i++)
+        {
+            _blockArray[i] = SingleBlockEncrypting(_blockArray[i], exampleKey2, false);
+        }
+
+        for (int i = 0; i < _blockArray.Length; i++)
+        {
+            _blockArray[i] = SingleBlockEncrypting(_blockArray[i], exampleKey1, true);
+        }
+
+        _fileBytes = ConcatenateByteArrays(_blockArray);
     }
 
-    void SingleBlockEncrypting(byte[] block)
+    byte[] SingleBlockEncrypting(byte[] block, string key, bool isDecrypting)
     {
         _output = new byte[8];
         // Initial permutation
@@ -189,7 +267,7 @@ public class TripleDES : MonoBehaviour
         Array.Copy(_output, 0, _leftHalf, 0, 4);
         Array.Copy(_output, 4, _rightHalf, 0, 4);
 
-        byte[] byteKey = ConvertStringToBytes(_exampleKey);
+        byte[] byteKey = ConvertStringToBytes(key);
         int numOfBytes = (_pc1.Length + 7) / 8; // calculate the number of bytes in the output
         byte[] pc1Key = new byte[numOfBytes];
 
@@ -226,12 +304,7 @@ public class TripleDES : MonoBehaviour
             _RPT[i] = _bitKey[halfLengthBits + i];
         }
 
-        _output = Algorithm(_bitKey, _LPT, _RPT, false);
-        DebugByteShowBits(_output);
-    }
-
-    void SingleBlockDecrypting(byte[] block)
-    {
+        return Algorithm(_bitKey, _LPT, _RPT, isDecrypting);
     }
 
     BitArray LeftShift(BitArray b, int count)
@@ -276,7 +349,7 @@ public class TripleDES : MonoBehaviour
         return concatenatedBits;
     }
 
-    byte[] Algorithm(BitArray key, BitArray LPT, BitArray RPT, bool isDecryption)
+    byte[] Algorithm(BitArray key, BitArray LPT, BitArray RPT, bool isDecrypting)
     {
         // Arrays of shifted key halves and concatenated values, shifting them. Then they will be used for generating 48-bit keys
         BitArray[] arrayC = new BitArray[16];
@@ -315,7 +388,7 @@ public class TripleDES : MonoBehaviour
         BitArray rn = new BitArray(32);
         // Perform actual Feistel operations
 
-        if (isDecryption)
+        if (isDecrypting)
         {
             for (int i = 16; i >= 1; i--)
             {
@@ -335,7 +408,7 @@ public class TripleDES : MonoBehaviour
                 rnMinus1 = rn;
             }
         }
-        
+
 
         // Apply reverse of initial permutation
         BitArray afterFeistel = ConcatenateBitArrays(rn, ln);
@@ -344,10 +417,10 @@ public class TripleDES : MonoBehaviour
         {
             result[i] = afterFeistel[_inverseInitialPermutation[i] - 1];
         }
-        
+
         // Convert result to bytes
         byte[] bytes = new byte[result.Count / 8];
-    
+
         int byteIndex = 0;
         int bitIndex = 0;
         byte currentByte = 0;
@@ -357,7 +430,7 @@ public class TripleDES : MonoBehaviour
             currentByte <<= 1;
             currentByte |= (byte)(result[i] ? 1 : 0);
             bitIndex++;
-        
+
             if (bitIndex == 8)
             {
                 bytes[byteIndex] = currentByte;
@@ -366,7 +439,7 @@ public class TripleDES : MonoBehaviour
                 currentByte = 0;
             }
         }
-        
+
         return bytes;
     }
 
@@ -427,6 +500,7 @@ public class TripleDES : MonoBehaviour
                     chosenSBox = S8;
                     break;
             }
+
             chunksOf4Bits[i] = SBoxFunction(chosenSBox, chunksOf6Bits[i]);
         }
 
@@ -444,6 +518,7 @@ public class TripleDES : MonoBehaviour
         {
             permutationP[i] = concatenatedResultAfterSBoxes[_pPermutation[i] - 1];
         }
+
         return permutationP;
     }
 
@@ -549,11 +624,7 @@ public class TripleDES : MonoBehaviour
         {
             _fileBytes = File.ReadAllBytes(path);
             _blockArray = SplitTo64BitBlocks(_fileBytes);
-            foreach (byte[] block in _blockArray)
-            {
-                DebugByteShowBits(block);
-                SingleBlockEncrypting(block);
-            }
+            this.path.text = $"Wybrany plik: {path}";
         });
     }
 
@@ -567,9 +638,8 @@ public class TripleDES : MonoBehaviour
 
         new FileBrowser().SaveFileBrowser(bp, "test", ".txt", path =>
         {
-            // _filebytes
-            File.WriteAllBytes(path, _output);
-            Debug.Log(path);
+            File.WriteAllBytes(path, _fileBytes);
+            this.path.text = $"Wybrany plik: {path}";
         });
     }
 
@@ -598,6 +668,26 @@ public class TripleDES : MonoBehaviour
 
         return blocks;
     }
+
+    public byte[] ConcatenateByteArrays(byte[][] arrays)
+    {
+        int totalLength = 0;
+        foreach (byte[] array in arrays)
+        {
+            totalLength += array.Length;
+        }
+
+        byte[] result = new byte[totalLength];
+        int currentIndex = 0;
+        foreach (byte[] array in arrays)
+        {
+            Array.Copy(array, 0, result, currentIndex, array.Length);
+            currentIndex += array.Length;
+        }
+
+        return result;
+    }
+
 
     void DebugByteShowBits(byte[] bytes)
     {
